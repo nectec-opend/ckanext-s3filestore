@@ -6,7 +6,7 @@ import flask
 from botocore.exceptions import ClientError
 
 import ckantoolkit as toolkit
-from ckantoolkit import _
+from ckantoolkit import _, config
 import ckan.lib.base as base
 
 from ckanext.s3filestore.uploader import S3Uploader, BaseS3Uploader
@@ -32,13 +32,20 @@ def uploaded_file_redirect(upload_to, filename):
 
     try:
         url = base_uploader.get_signed_url_to_key(filepath)
+        return redirect(url)
     except ClientError as ex:
-        if ex.response['Error']['Code'] == 'NoSuchKey' or '404':
-            return abort(404, _('Keys not found on S3'))
+        error_code = ex.response['Error']['Code']
+        if error_code in ('NoSuchKey', '404', 404):
+            local_root = config.get('ckan.storage_path', '')
+            local_path = os.path.join(
+                local_root, 'storage', 'uploads', upload_to, filename
+            )
+            log.info('S3 not found, fallback local: %s', local_path)
+            if os.path.exists(local_path):
+                return flask.send_file(local_path)
+            return abort(404, _('File not found'))
         else:
             raise ex
-
-    return redirect(url)
 
 
 s3_uploads.add_url_rule(u'/uploads/<upload_to>/<filename>', view_func=uploaded_file_redirect)

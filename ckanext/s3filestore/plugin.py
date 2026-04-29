@@ -60,6 +60,7 @@ class S3FileStorePlugin(plugins.SingletonPlugin):
 
     def get_uploader(self, upload_to, old_filename=None):
         '''Return an uploader object used to upload general files.'''
+        import ckan.lib.uploader as ckan_uploader
         # return ckanext.s3filestore.uploader.S3Uploader(upload_to,
         #                                                old_filename)
         return ckan_uploader.Upload(upload_to, old_filename)
